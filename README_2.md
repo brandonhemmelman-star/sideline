@@ -22,6 +22,8 @@ Positions and lineups are off by default. Turn them on in Settings.
 
 ## Try it
 
+Open the live app: https://brandonhemmelman-star.github.io/sideline/
+
 The app opens with a demo team of made-up players and a short tour. Clear the demo on the Roster tab when you are ready to enter your own team.
 
 ## Your data
@@ -46,6 +48,12 @@ To put it online with GitHub Pages:
 If the folder sits inside a larger repository, the app will be at `/sideline/` on that site. Pages publishes everything in the branch, so use a repository that only holds things you want to be public.
 
 On a phone, use Add to Home Screen to open it like an app.
+
+## Notes
+
+- Fonts load from Google Fonts. If they can't load, the app falls back to system fonts.
+- League rules vary. The defaults are a 12-snap minimum and a 150 lb ball-carrier limit. Change them in Settings, or clear the weight limit to turn it off.
+
 
 ## Notes
 
