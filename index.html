@@ -1,0 +1,685 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>
+:root { color-scheme: light; padding-block: env(safe-area-inset-top, 0px) env(safe-area-inset-bottom, 0px); }
+body { margin: 0; }
+img { max-width: 100%; }
+[hidden] { display: none !important; }
+</style>
+<title>Sideline Snap Counter</title>
+<meta name="description" content="Roster, lineup and snap counter for youth football coaches. Runs in your browser. Nothing leaves your device.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Source+Sans+3:wght@400;600;700&display=swap">
+<style>
+/* Layout: one narrow column, built for a phone held on the sideline. Sticky header with tabs, big tap targets, scoreboard-style numerals. */
+:root {
+  --bg: #F1F4EE;
+  --surface: #FFFFFF;
+  --surface-2: #E8EDE5;
+  --fg: #14231A;
+  --muted: #55665B;
+  --line: #D3DBD0;
+  --accent: #1E5C3B;
+  --on-accent: #FFFFFF;
+  --gold: #8A6A10;
+  --gold-bg: #F4EAC8;
+  --bad: #B03A30;
+  --bad-bg: #F6DDDA;
+  --ok: #23703F;
+  --ok-bg: #D9EEDF;
+  --shadow: 0 -6px 24px rgba(20, 35, 26, .18);
+  --display: "Barlow Condensed", "Arial Narrow", Impact, sans-serif;
+  --body: "Source Sans 3", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0E1A13; --surface: #162a1e; --surface-2: #1e3627; --fg: #E6EFE8; --muted: #93AB9C;
+    --line: #2a4533; --accent: #5CC08A; --on-accent: #0B1A11; --gold: #E2C25E; --gold-bg: #3b3414;
+    --bad: #F08A80; --bad-bg: #432421; --ok: #6FD39A; --ok-bg: #1b3d2a; --shadow: 0 -6px 24px rgba(0, 0, 0, .5); color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0E1A13; --surface: #162a1e; --surface-2: #1e3627; --fg: #E6EFE8; --muted: #93AB9C;
+  --line: #2a4533; --accent: #5CC08A; --on-accent: #0B1A11; --gold: #E2C25E; --gold-bg: #3b3414;
+  --bad: #F08A80; --bad-bg: #432421; --ok: #6FD39A; --ok-bg: #1b3d2a; --shadow: 0 -6px 24px rgba(0, 0, 0, .5); color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 16px; line-height: 1.4;
+  padding-block: 0 40px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+body.touring { padding-bottom: 300px; }
+.app { max-width: 640px; margin: 0 auto; }
+button, input, textarea, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+header { padding: 18px 0 0; }
+.brand { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.brand h1 { font-family: var(--display); font-size: 34px; letter-spacing: .02em; text-transform: uppercase; margin: 0; line-height: 1; }
+.brand span { color: var(--muted); font-size: 13px; }
+nav { display: flex; gap: 2px; margin-top: 14px; border-bottom: 1px solid var(--line); position: sticky; top: env(safe-area-inset-top, 0px); background: var(--bg); z-index: 5; overflow-x: auto; }
+nav button { flex: 1 0 auto; background: none; border: 0; border-bottom: 3px solid transparent; padding: 12px 8px; font-family: var(--display);
+  font-size: 18px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+nav button[aria-selected="true"] { color: var(--fg); border-bottom-color: var(--accent); }
+.hl { outline: 3px solid var(--gold); outline-offset: -3px; border-radius: 8px; background: var(--gold-bg) !important; }
+main { padding-top: 16px; display: flex; flex-direction: column; gap: 14px; }
+
+.btn { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 9px 14px; min-height: 42px; font-weight: 600; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.btn.danger { background: var(--bad-bg); border-color: var(--bad); color: var(--bad); }
+.btn.small { min-height: 34px; padding: 5px 10px; font-size: 14px; }
+.btn:disabled { opacity: .4; cursor: default; }
+.link { background: none; border: 0; color: var(--muted); text-decoration: underline; padding: 6px 4px; font-size: 14px; }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.grow { flex: 1; min-width: 0; }
+.field { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); font-weight: 600; min-width: 0; }
+.inp { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 9px 10px; min-height: 42px; width: 100%; color: var(--fg); font-weight: 400; font-size: 16px; }
+textarea.inp { min-height: 110px; font-family: ui-monospace, Menlo, monospace; font-size: 13px; }
+
+.banner { border-radius: 10px; padding: 11px 13px; font-size: 14px; line-height: 1.45; }
+.banner.demo { background: var(--gold-bg); color: var(--fg); border: 1px dashed var(--gold); }
+.banner.warn { background: var(--bad-bg); color: var(--fg); border: 1px solid var(--bad); }
+.banner.ok { background: var(--ok-bg); color: var(--fg); border: 1px solid var(--ok); }
+.banner b { font-weight: 700; }
+
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.stat { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
+.stat small { display: block; color: var(--muted); font-size: 12px; font-weight: 600; }
+.stat b { font-family: var(--display); font-size: 34px; line-height: 1.05; font-variant-numeric: tabular-nums; }
+.stat.good b { color: var(--ok); } .stat.bad b { color: var(--bad); }
+
+.seg { display: inline-flex; background: var(--surface-2); border-radius: 9px; padding: 3px; gap: 2px; }
+.seg button { background: none; border: 0; border-radius: 7px; padding: 6px 11px; font-size: 14px; font-weight: 600; color: var(--muted); min-height: 34px; }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--fg); box-shadow: 0 1px 2px rgba(0,0,0,.15); }
+
+.list { display: flex; flex-direction: column; gap: 6px; }
+.p { display: grid; grid-template-columns: auto 38px minmax(0, 1fr) auto; align-items: center; gap: 9px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 7px 9px; }
+.p.short { border-left: 5px solid var(--bad); padding-left: 5px; }
+.p.met { border-left: 5px solid var(--ok); padding-left: 5px; }
+.p.out { opacity: .5; }
+.tog { min-width: 44px; min-height: 40px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface-2); font-family: var(--display); font-size: 16px; font-weight: 700; letter-spacing: .05em; }
+.tog.on { background: var(--ok-bg); color: var(--ok); border-color: var(--ok); }
+.num { font-family: var(--display); font-weight: 700; font-size: 24px; text-align: center; color: var(--gold); font-variant-numeric: tabular-nums; }
+.nm { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.meta { font-size: 12.5px; color: var(--muted); display: flex; gap: 6px; flex-wrap: wrap; }
+.tag { font-size: 11.5px; font-weight: 700; border-radius: 5px; padding: 1px 6px; background: var(--gold-bg); color: var(--gold); }
+.tag.pos { background: var(--surface-2); color: var(--muted); }
+.tag.bad { background: var(--bad-bg); color: var(--bad); }
+.cnt { display: flex; align-items: center; gap: 4px; }
+.cnt button { width: 46px; height: 46px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface-2); font-size: 24px; line-height: 1; font-weight: 700; }
+.cnt button.plus { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.cnt output { font-family: var(--display); font-size: 34px; font-weight: 700; min-width: 40px; text-align: center; font-variant-numeric: tabular-nums; }
+.short .cnt output { color: var(--bad); }
+
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+.card h2 { font-family: var(--display); font-size: 22px; letter-spacing: .04em; text-transform: uppercase; margin: 0; }
+.card p { margin: 0; color: var(--muted); font-size: 14px; }
+.addgrid { display: grid; grid-template-columns: 1fr 76px 86px; gap: 8px; }
+.rrow { display: grid; grid-template-columns: minmax(0,1fr) 60px 70px auto; gap: 6px; align-items: center; padding: 6px 0; border-top: 1px solid var(--line); }
+.rrow:first-child { border-top: 0; }
+.rrow .inp { min-height: 38px; padding: 6px 8px; }
+.rhead { display: grid; grid-template-columns: minmax(0,1fr) 60px 70px auto; gap: 6px; font-size: 12px; color: var(--muted); font-weight: 600; }
+.rrow .x { min-width: 38px; }
+.empty { text-align: center; color: var(--muted); padding: 26px 8px; }
+.note { font-size: 12.5px; color: var(--muted); text-align: center; }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(18px + env(safe-area-inset-bottom, 0px)); background: var(--fg); color: var(--bg);
+  padding: 9px 16px; border-radius: 999px; font-size: 14px; font-weight: 600; z-index: 40; max-width: 90vw; }
+
+.pos-groups { display: flex; flex-direction: column; gap: 10px; }
+.pos-label { font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: 5px; }
+.pills { display: flex; flex-wrap: wrap; gap: 6px; }
+.pill { display: inline-flex; align-items: baseline; gap: 6px; border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 6px 12px; min-height: 40px;
+  font-family: var(--display); font-size: 20px; font-weight: 700; letter-spacing: .04em; }
+.pill small { font-family: var(--body); font-size: 12px; font-weight: 600; color: var(--muted); }
+.pill[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.pill[aria-pressed="true"] small { color: var(--on-accent); opacity: .85; }
+.prow { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-top: 1px solid var(--line); }
+.prow:first-child { border-top: 0; }
+.prow .num { min-width: 30px; }
+.prow .nm { flex: 1; min-width: 0; }
+.prow output { font-family: var(--display); font-size: 24px; font-weight: 700; min-width: 28px; text-align: right; font-variant-numeric: tabular-nums; }
+.prow output.low { color: var(--bad); }
+.prow.out { opacity: .5; }
+.check { display: flex; align-items: center; gap: 10px; font-weight: 600; padding: 4px; border-radius: 8px; }
+.check input { width: 22px; height: 22px; accent-color: var(--accent); }
+
+.gh { display: flex; justify-content: space-between; align-items: baseline; margin-top: 4px; }
+.gh b { font-family: var(--display); font-size: 20px; letter-spacing: .05em; text-transform: uppercase; }
+.gh small { color: var(--muted); font-size: 12.5px; }
+.slot { display: grid; grid-template-columns: 62px minmax(0, 1fr); gap: 8px; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 6px 8px; }
+.slot.empty-slot { border-style: dashed; }
+.slot span { font-family: var(--display); font-size: 18px; font-weight: 700; color: var(--gold); letter-spacing: .04em; }
+.slot select { background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; padding: 8px; min-height: 42px; width: 100%; min-width: 0; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { display: inline-block; padding: 3px 9px; border-radius: 6px; background: var(--surface-2); font-size: 13px; font-weight: 600; }
+.chip.bad { background: var(--bad-bg); color: var(--bad); }
+.chip.warn { background: var(--gold-bg); color: var(--gold); }
+.cov { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 7px 0; border-top: 1px solid var(--line); }
+.cov:first-of-type { border-top: 0; }
+.cov b { font-family: var(--display); font-size: 20px; letter-spacing: .04em; margin-right: 8px; }
+.cov small { color: var(--muted); font-size: 13px; }
+.st { font-size: 12.5px; font-weight: 700; border-radius: 6px; padding: 3px 9px; white-space: nowrap; }
+.st.ok { background: var(--ok-bg); color: var(--ok); } .st.warn { background: var(--gold-bg); color: var(--gold); } .st.bad { background: var(--bad-bg); color: var(--bad); }
+.pt { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 10px; padding: 8px 0; border-top: 1px solid var(--line); }
+.pt:first-of-type { border-top: 0; }
+.pt .who { font-weight: 700; min-width: 0; flex: 1 1 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pcs { display: flex; gap: 4px; }
+.pc { min-width: 36px; height: 28px; display: inline-flex; align-items: center; justify-content: center; border-radius: 6px; background: var(--surface-2); color: var(--muted);
+  font-family: var(--display); font-weight: 700; font-size: 15px; letter-spacing: .04em; }
+.pc.on { background: var(--ok-bg); color: var(--ok); }
+.pt small { color: var(--muted); font-size: 12.5px; min-width: 62px; text-align: right; font-variant-numeric: tabular-nums; }
+.legend { font-size: 12.5px; color: var(--muted); }
+
+.tour { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; padding: 0 max(12px, env(safe-area-inset-left, 0px)) calc(12px + env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px)); }
+.tour-card { max-width: 560px; margin: 0 auto; background: var(--surface); border: 1px solid var(--line); border-top: 4px solid var(--gold); border-radius: 14px; box-shadow: var(--shadow); padding: 14px 16px 14px; display: flex; flex-direction: column; gap: 8px; }
+.tour-card h3 { font-family: var(--display); font-size: 24px; letter-spacing: .03em; text-transform: uppercase; margin: 0; line-height: 1.1; }
+.tour-card p { margin: 0; font-size: 15px; }
+.tour-top { display: flex; justify-content: space-between; align-items: center; color: var(--muted); font-size: 13px; font-weight: 600; }
+.tour-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px; }
+
+@media (max-width: 420px) {
+  .p { gap: 6px; padding: 6px; } .cnt button { width: 42px; } .stat b { font-size: 28px; }
+  .addgrid { grid-template-columns: 1fr 64px 74px; }
+  nav button { padding: 12px 7px; font-size: 16px; letter-spacing: .03em; }
+}
+@media (prefers-reduced-motion: no-preference) { .btn, .cnt button, .tog { transition: transform .08s; } .cnt button:active { transform: scale(.94); } }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <header>
+    <div class="brand"><h1>Sideline</h1><span>Roster, lineups and snap counts for youth football</span></div>
+    <nav role="tablist" aria-label="Sections">
+      <button role="tab" id="t-snaps" data-tab="snaps">Snaps</button>
+      <button role="tab" id="t-roster" data-tab="roster">Roster</button>
+      <button role="tab" id="t-pos" data-tab="positions" hidden>Positions</button>
+      <button role="tab" id="t-lineup" data-tab="lineup" hidden>Lineup</button>
+      <button role="tab" id="t-settings" data-tab="settings">Settings</button>
+    </nav>
+  </header>
+  <main id="main"></main>
+</div>
+<div id="tour" class="tour" hidden></div>
+<div id="toast" class="toast" hidden></div>
+
+<script>
+(function () {
+  var KEY = "sideline-v1";
+  var SIDES = ["Offense", "Defense"];
+  var uid = function () { return "p" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); };
+
+  function defaultPositions() { return { Offense: ["QB", "RB", "WR", "TE", "OL"], Defense: ["DL", "LB", "CB", "S"] }; }
+  function defaultCounts() { return { QB: 1, RB: 2, WR: 2, TE: 1, OL: 5, DL: 4, LB: 3, CB: 2, S: 2 }; }
+
+  // Demo roster: fictional players, shown so the tools make sense before a coach enters a real team.
+  function demoState() {
+    var d = [
+      ["Sam Carter", 7, 112, 14], ["Jordan Reyes", 12, 98, 13], ["Mason Doyle", 22, 130, 12], ["Eli Brandt", 3, 104, 12],
+      ["Caleb Nguyen", 54, 158, 11], ["Owen Lindqvist", 64, 141, 10], ["Tyler Boone", 71, 136, 9], ["Noah Castillo", 55, 119, 12],
+      ["Isaiah Fox", 21, 101, 8], ["Reid Harmon", 33, 109, 7], ["Dante Walsh", 18, 95, 6], ["Wyatt Pruitt", 85, 92, 5],
+      ["Jaylen Moore", 9, 107, 12], ["Gabe Ostrowski", 76, 147, 12], ["Theo Marsh", 44, 116, 4], ["Luca Bianchi", 28, 99, 3],
+      ["Henry Abbott", 80, 88, 2], ["Micah Strand", 15, 121, 11], ["Ryder Kolb", 91, 133, 10], ["Cole Whitfield", 2, 90, 1]
+    ];
+    var roster = [], snaps = {};
+    d.forEach(function (r) { var id = uid(); roster.push({ id: id, name: r[0], jersey: String(r[1]), weight: r[2], out: false }); snaps[id] = r[3]; });
+    roster[16].out = true; // example of a player marked OUT
+    var E = { QB: [0, 1], RB: [2, 3, 8, 12, 9], WR: [9, 10, 11, 14, 15, 19, 8], TE: [7, 17], OL: [4, 5, 6, 13, 18, 7], DL: [4, 5, 6, 7, 13, 18, 17], LB: [2, 7, 9, 17, 12], CB: [3, 8, 10, 11, 15, 19], S: [0, 12, 14, 9, 3] };
+    var elig = {}; Object.keys(E).forEach(function (k) { elig[k] = E[k].map(function (i) { return roster[i].id; }); });
+    var st = { demo: true, tourDone: false, roster: roster, snaps: snaps, settings: { minSnaps: 12, weightLimit: 150, positionsOn: true, periods: 2 },
+      positions: defaultPositions(), counts: defaultCounts(), elig: elig, lineups: {}, opponent: "Example Eagles", date: "" };
+    var prev = S; S = st;
+    ["P1", "P2"].forEach(function (pk) { SIDES.forEach(function (sd) { autoFill(pk, sd); }); });
+    S = prev;
+    return st;
+  }
+  function blankState() { return { demo: false, tourDone: true, roster: [], snaps: {}, settings: { minSnaps: 12, weightLimit: 150, positionsOn: false, periods: 2 },
+    positions: defaultPositions(), counts: defaultCounts(), elig: {}, lineups: {}, opponent: "", date: "" }; }
+
+  var S;
+  try { var raw = localStorage.getItem(KEY); S = raw ? JSON.parse(raw) : null; } catch (e) { S = null; }
+  if (!S || !S.roster) S = demoState();
+  if (S.demo && !S.lineups) S = demoState(); // refresh an older saved demo so it includes lineups
+  S.settings = S.settings || {};
+  if (!S.settings.minSnaps && S.settings.minSnaps !== 0) S.settings.minSnaps = 12;
+  if (S.settings.weightLimit == null) S.settings.weightLimit = 150;
+  if (S.settings.periods !== 4) S.settings.periods = 2;
+  S.snaps = S.snaps || {};
+  S.positions = S.positions || defaultPositions();
+  S.counts = S.counts || defaultCounts();
+  S.elig = S.elig || {};
+  S.lineups = S.lineups || {};
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
+
+  var tab = "snaps", sortBy = "roster", undo = [], confirmNew = false, confirmDel = null, confirmClr = false, backupText = "", toastTimer;
+  var posSel = "QB", posFilter = "", planP = 0, planSide = "Offense", planView = "plan", tourStep = null;
+  var $ = function (s) { return document.querySelector(s); };
+  var esc = function (v) { return String(v == null ? "" : v).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); };
+  function toast(msg) { var t = $("#toast"); t.textContent = msg; t.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(function () { t.hidden = true; }, 2200); }
+  function snapsOf(id) { return S.snaps[id] || 0; }
+  function clearDemoIfNeeded() { if (S.demo) { S.roster = []; S.snaps = {}; S.elig = {}; S.lineups = {}; S.opponent = ""; S.demo = false; } }
+
+  /* ---------- positions, lineups, coverage ---------- */
+  function posOn() { return !!S.settings.positionsOn; }
+  function allLabels() { return S.positions.Offense.concat(S.positions.Defense); }
+  function spots(l) { return S.counts[l] || 1; }
+  function playerById(id) { return S.roster.find(function (p) { return p.id === id; }); }
+  function activeRoster() { return S.roster.filter(function (p) { return !p.out; }); }
+  function eligPlayers(l) { var ids = S.elig[l] || []; return S.roster.filter(function (p) { return ids.indexOf(p.id) >= 0; }); }
+  function eligActive(l) { return eligPlayers(l).filter(function (p) { return !p.out; }); }
+  function posOf(id) { return allLabels().filter(function (l) { return (S.elig[l] || []).indexOf(id) >= 0; }); }
+  function periods() { return (S.settings.periods === 4 ? ["Q1", "Q2", "Q3", "Q4"] : ["Half 1", "Half 2"]).map(function (n, i) { return { k: "P" + (i + 1), name: n, short: n.replace("Half ", "H") }; }); }
+  function slotsFor(side) {
+    var out = [];
+    S.positions[side].forEach(function (l) { var n = spots(l); for (var i = 0; i < n; i++) out.push({ key: l + "#" + i, label: l, i: i, n: n, name: n > 1 ? l + " " + (i + 1) : l }); });
+    return out;
+  }
+  function lu(pk, side) { S.lineups[pk] = S.lineups[pk] || {}; S.lineups[pk][side] = S.lineups[pk][side] || {}; return S.lineups[pk][side]; }
+  function placed(pk, side) { // ids of active players in a valid slot of this lineup
+    var cur = (S.lineups[pk] && S.lineups[pk][side]) || {}, out = [];
+    slotsFor(side).forEach(function (s) { var p = cur[s.key] && playerById(cur[s.key]); if (p && !p.out) out.push(p.id); });
+    return out;
+  }
+  function sidesIn(id, pk) { return SIDES.filter(function (sd) { return placed(pk, sd).indexOf(id) >= 0; }); }
+  function periodsStarted(id) { return periods().filter(function (P) { return sidesIn(id, P.k).length; }).length; }
+  function slotLoad(id) { var n = 0; periods().forEach(function (P) { n += sidesIn(id, P.k).length; }); return n; }
+  function hasLineups() { return periods().some(function (P) { return SIDES.some(function (sd) { return placed(P.k, sd).length; }); }); }
+
+  // Fills empty spots with eligible players who have the fewest starts so far, so playing time spreads out.
+  function autoFill(pk, side) {
+    var cur = lu(pk, side), used = {}, sl = slotsFor(side);
+    sl.forEach(function (s) { var p = cur[s.key] && playerById(cur[s.key]); if (p && !p.out) used[p.id] = 1; else delete cur[s.key]; });
+    var empty = sl.filter(function (s) { return !cur[s.key]; });
+    var avail = function (s) { return eligActive(s.label).filter(function (p) { return !used[p.id]; }); };
+    empty.sort(function (a, b) { return avail(a).length - avail(b).length; });
+    var other = side === "Offense" ? "Defense" : "Offense";
+    empty.forEach(function (s) {
+      var c = avail(s); if (!c.length) return;
+      var score = function (p) { return slotLoad(p.id) + (placed(pk, other).indexOf(p.id) >= 0 ? 100 : 0); };
+      c.sort(function (a, b) { return score(a) - score(b); });
+      cur[s.key] = c[0].id; used[c[0].id] = 1;
+    });
+  }
+
+  /* ---------- views ---------- */
+  function demoBanner() {
+    if (!S.demo) return "";
+    return '<div class="banner demo"><b>Demo roster.</b> These are made-up players with example snap counts so you can see how it works. ' +
+      'Adding your first player, or tapping the button below, replaces them.<div class="row" style="margin-top:8px"><button class="btn small" data-act="clear-demo">Clear demo and start my roster</button></div></div>';
+  }
+
+  function viewSnaps() {
+    var active = activeRoster(), min = S.settings.minSnaps, N = periods().length;
+    var below = active.filter(function (p) { return snapsOf(p.id) < min; });
+    var total = Object.keys(S.snaps).reduce(function (a, k) { return a + (S.snaps[k] || 0); }, 0);
+    var list = S.roster.slice();
+    if (sortBy === "jersey") list.sort(function (a, b) { var x = a.jersey === "" ? 1e9 : +a.jersey, y = b.jersey === "" ? 1e9 : +b.jersey; return x - y; });
+    if (sortBy === "fewest") list.sort(function (a, b) { return (a.out - b.out) || (snapsOf(a.id) - snapsOf(b.id)); });
+    if (!posOn() || allLabels().indexOf(posFilter) < 0) posFilter = "";
+    if (posFilter) { var fids = S.elig[posFilter] || []; list = list.filter(function (p) { return fids.indexOf(p.id) >= 0; }); }
+    var showStarts = posOn() && hasLineups();
+    var h = demoBanner();
+    h += '<div class="row"><label class="field grow">Opponent<input class="inp" id="opp" value="' + esc(S.opponent) + '" placeholder="Opponent" autocomplete="off"></label>' +
+      '<label class="field" style="width:150px">Date<input class="inp" id="gdate" type="date" value="' + esc(S.date) + '"></label></div>';
+    h += '<div class="stats">' +
+      '<div class="stat"><small>Active</small><b>' + active.length + '</b></div>' +
+      '<div class="stat good"><small>Min. met</small><b>' + (active.length - below.length) + '</b></div>' +
+      '<div class="stat ' + (below.length ? "bad" : "good") + '"><small>Need more</small><b>' + below.length + '</b></div>' +
+      '<div class="stat"><small>Total snaps</small><b>' + total + '</b></div></div>';
+    if (below.length) h += '<div class="banner warn"><b>Under ' + min + ' snaps:</b> ' + below.slice().sort(function (a, b) { return snapsOf(a.id) - snapsOf(b.id); }).map(function (p) { return esc(p.name) + " (" + snapsOf(p.id) + ")"; }).join(", ") + '</div>';
+    else if (active.length) h += '<div class="banner ok">Everyone active has reached ' + min + ' snaps.</div>';
+    h += '<div class="row" style="justify-content:space-between"><div class="seg" role="group" aria-label="Sort players">' +
+      ['roster|Roster order', 'jersey|Jersey #', 'fewest|Fewest snaps'].map(function (o) { var p = o.split("|"); return '<button data-sort="' + p[0] + '" aria-pressed="' + (sortBy === p[0]) + '">' + p[1] + '</button>'; }).join("") + '</div>' +
+      '<button class="btn small" data-act="undo"' + (undo.length ? "" : " disabled") + '>Undo</button></div>';
+    if (posOn()) h += '<label class="field">Show position<select class="inp" id="posfilter"><option value="">All players</option>' +
+      allLabels().map(function (l) { return '<option value="' + esc(l) + '"' + (l === posFilter ? " selected" : "") + '>' + esc(l) + ' (' + eligPlayers(l).length + ')</option>'; }).join("") + '</select></label>';
+    if (!S.roster.length) h += '<div class="empty">No players yet. Add your roster on the Roster tab.</div>';
+    else if (!list.length) h += '<div class="empty">No one is assigned to ' + esc(posFilter) + ' yet. Assign players on the Positions tab.</div>';
+    h += '<div class="list">' + list.map(function (p) {
+      var c = snapsOf(p.id), short = !p.out && c < min, met = !p.out && c >= min;
+      var over = S.settings.weightLimit > 0 && p.weight && p.weight > S.settings.weightLimit;
+      var starts = showStarts && !p.out ? periodsStarted(p.id) : N;
+      return '<div class="p ' + (p.out ? "out" : short ? "short" : met ? "met" : "") + '">' +
+        '<button class="tog ' + (p.out ? "" : "on") + '" data-act="toggle" data-id="' + p.id + '" aria-label="' + esc(p.name) + (p.out ? " is out. Mark active" : " is in. Mark out") + '">' + (p.out ? "OUT" : "IN") + '</button>' +
+        '<div class="num">' + (p.jersey ? esc(p.jersey) : "–") + '</div>' +
+        '<div style="min-width:0"><div class="nm">' + esc(p.name) + '</div><div class="meta">' + (p.weight ? p.weight + " lb" : "no weight") + (over ? '<span class="tag">over ' + S.settings.weightLimit + '</span>' : "") +
+        (posOn() ? posOf(p.id).map(function (l) { return '<span class="tag pos">' + esc(l) + '</span>'; }).join("") : "") +
+        (starts < N ? '<span class="tag ' + (starts === 0 ? "bad" : "") + '">' + (starts === 0 ? "bench" : "starts " + starts + "/" + N) + '</span>' : "") + '</div></div>' +
+        '<div class="cnt"><button data-act="dec" data-id="' + p.id + '"' + (p.out ? " disabled" : "") + ' aria-label="Remove a snap for ' + esc(p.name) + '">−</button>' +
+        '<output aria-label="Snaps for ' + esc(p.name) + '">' + c + '</output>' +
+        '<button class="plus" data-act="inc" data-id="' + p.id + '"' + (p.out ? " disabled" : "") + ' aria-label="Add a snap for ' + esc(p.name) + '">+</button></div></div>';
+    }).join("") + '</div>';
+    h += '<div class="row" style="justify-content:center;margin-top:6px">' + (confirmNew ?
+      '<span style="font-size:14px">Reset all snap counts and mark everyone active?</span><button class="btn danger small" data-act="new-game-yes">Yes, new game</button><button class="btn small" data-act="new-game-no">Cancel</button>' :
+      '<button class="btn" data-act="new-game">New game</button>') + '</div>';
+    return h;
+  }
+
+  function viewRoster() {
+    var h = demoBanner();
+    h += '<div class="card"><h2>Add a player</h2><form id="addform" class="addgrid" autocomplete="off">' +
+      '<label class="field">Name<input class="inp" id="a-name" placeholder="First Last" required></label>' +
+      '<label class="field">Jersey<input class="inp" id="a-j" inputmode="numeric" maxlength="2" placeholder="#"></label>' +
+      '<label class="field">Weight<input class="inp" id="a-w" inputmode="numeric" maxlength="3" placeholder="lb"></label>' +
+      '<button class="btn primary" style="grid-column:1/-1" type="submit">Add player</button></form></div>';
+    h += '<div class="card"><h2>Players (' + S.roster.length + ')</h2>';
+    if (!S.roster.length) h += '<div class="empty">No players yet.</div>';
+    else {
+      h += '<div class="rhead"><span>Name</span><span>Jersey</span><span>Weight</span><span style="width:38px"></span></div>';
+      h += S.roster.map(function (p) {
+        var del = confirmDel === p.id;
+        return '<div class="rrow"><input class="inp" data-edit="name" data-id="' + p.id + '" value="' + esc(p.name) + '" aria-label="Name">' +
+          '<input class="inp" data-edit="jersey" data-id="' + p.id + '" value="' + esc(p.jersey) + '" inputmode="numeric" maxlength="2" aria-label="Jersey number">' +
+          '<input class="inp" data-edit="weight" data-id="' + p.id + '" value="' + (p.weight || "") + '" inputmode="numeric" maxlength="3" aria-label="Weight in pounds">' +
+          (del ? '<button class="btn danger small" data-act="del-yes" data-id="' + p.id + '">Remove</button>' : '<button class="btn small x" data-act="del" data-id="' + p.id + '" aria-label="Remove ' + esc(p.name) + '">×</button>') + '</div>';
+      }).join("");
+    }
+    h += '</div>';
+    h += '<div class="card"><h2>Paste a roster</h2><p>One player per line: name, jersey number, weight. Commas or tabs both work, and a spreadsheet copy pastes right in. Jersey and weight are optional.</p>' +
+      '<textarea class="inp" id="paste" placeholder="Sam Carter, 7, 112&#10;Jordan Reyes, 12, 98"></textarea><button class="btn primary" data-act="paste-add">Add these players</button></div>';
+    h += '<div class="card"><h2>Backup</h2><p>Your roster and lineups live only in this browser. Copy a backup now and then, and paste it back here to restore it on a new phone.</p>' +
+      '<div class="row"><button class="btn" data-act="backup">Copy backup</button></div>' +
+      (backupText ? '<textarea class="inp" id="backup-out" readonly>' + esc(backupText) + '</textarea>' : '') +
+      '<textarea class="inp" id="restore" placeholder="Paste a backup here to restore"></textarea><button class="btn" data-act="restore">Restore from backup</button></div>';
+    return h;
+  }
+
+  function viewPositions() {
+    var labels = allLabels(); if (labels.indexOf(posSel) < 0) posSel = labels[0];
+    var min = S.settings.minSnaps, ids = S.elig[posSel] || [];
+    var mine = eligPlayers(posSel), others = S.roster.filter(function (p) { return ids.indexOf(p.id) < 0; });
+    var h = demoBanner();
+    h += '<div class="pos-groups">' + SIDES.map(function (side) {
+      return '<div><div class="pos-label">' + side + '</div><div class="pills">' + S.positions[side].map(function (l) {
+        return '<button class="pill" data-pos="' + esc(l) + '" aria-pressed="' + (l === posSel) + '">' + esc(l) + ' <small>' + eligPlayers(l).length + '</small></button>';
+      }).join("") + '</div></div>';
+    }).join("") + '</div>';
+    h += '<div class="card"><h2>' + esc(posSel) + '</h2><p>' + (mine.length ? mine.length + " eligible for " + spots(posSel) + (spots(posSel) > 1 ? " spots" : " spot") + ". Snap counts are shown so you can see who needs time here." : "No one assigned yet.") + '</p>';
+    h += mine.map(function (p) {
+      var c = snapsOf(p.id), low = !p.out && c < min;
+      return '<div class="prow' + (p.out ? " out" : "") + '"><span class="num">' + (p.jersey ? esc(p.jersey) : "–") + '</span><span class="nm">' + esc(p.name) + (p.out ? " (out)" : "") + '</span>' +
+        '<output class="' + (low ? "low" : "") + '" aria-label="Snaps">' + c + '</output>' +
+        '<button class="btn small" data-act="pos-rm" data-id="' + p.id + '" aria-label="Remove ' + esc(p.name) + ' from ' + esc(posSel) + '">×</button></div>';
+    }).join("");
+    if (!S.roster.length) h += '<div class="empty">Add players on the Roster tab first.</div>';
+    else if (others.length) h += '<select class="inp" id="posadd"><option value="">+ Add player to ' + esc(posSel) + '…</option>' +
+      others.map(function (p) { return '<option value="' + p.id + '">' + (p.jersey ? "#" + esc(p.jersey) + " " : "") + esc(p.name) + '</option>'; }).join("") + '</select>';
+    return h + '</div>';
+  }
+
+  function lastName(p) { return p.name.split(" ").slice(-1)[0]; }
+  function tagName(p) { return (p.jersey ? "#" + p.jersey + " " : "") + lastName(p); }
+
+  function viewLineup() {
+    var h = demoBanner();
+    h += '<div class="seg" role="group" aria-label="Lineup view" style="align-self:flex-start">' +
+      '<button data-view="plan" aria-pressed="' + (planView === "plan") + '">Plan lineup</button><button data-view="review" aria-pressed="' + (planView === "review") + '">Review</button></div>';
+    return h + (planView === "plan" ? viewPlan() : viewReview());
+  }
+
+  function viewPlan() {
+    var P = periods(); if (planP >= P.length) planP = 0;
+    var pk = P[planP].k, side = planSide, sl = slotsFor(side), cur = lu(pk, side);
+    var vals = sl.map(function (s) { return cur[s.key]; }).filter(function (id) { return id && playerById(id); });
+    var filled = placed(pk, side).length;
+    var dups = vals.filter(function (id, i) { return vals.indexOf(id) !== i; });
+    var outs = vals.filter(function (id) { return playerById(id).out; });
+    var h = '<div class="row" style="justify-content:space-between"><div class="seg" role="group" aria-label="Period">' +
+      P.map(function (p, i) { return '<button data-per="' + i + '" aria-pressed="' + (i === planP) + '">' + p.name + '</button>'; }).join("") + '</div>' +
+      '<div class="seg" role="group" aria-label="Side">' + SIDES.map(function (sd) { return '<button data-side="' + sd + '" aria-pressed="' + (sd === side) + '">' + sd + '</button>'; }).join("") + '</div></div>';
+    h += '<div class="row"><button class="btn primary small" data-act="autofill">Auto-fill empty spots</button>' +
+      (planP > 0 ? '<button class="btn small" data-act="copyprev">Copy from ' + P[planP - 1].name + '</button>' : "") +
+      (confirmClr ? '<button class="btn danger small" data-act="clr-yes">Yes, clear</button><button class="btn small" data-act="clr-no">Cancel</button>' : '<button class="btn small" data-act="clr">Clear</button>') + '</div>';
+    h += '<div class="legend">' + filled + ' of ' + sl.length + ' spots filled. Auto-fill picks eligible players with the fewest starts so far.</div>';
+    if (dups.length) h += '<div class="banner warn"><b>Placed twice:</b> ' + esc(dups.filter(function (id, i) { return dups.indexOf(id) === i; }).map(function (id) { return playerById(id).name; }).join(", ")) + '</div>';
+    if (outs.length) h += '<div class="banner warn"><b>Marked out but in this lineup:</b> ' + esc(outs.map(function (id) { return playerById(id).name; }).join(", ")) + '</div>';
+    var usedMap = {}; vals.forEach(function (id) { usedMap[id] = 1; });
+    h += S.positions[side].map(function (l) {
+      var el = eligActive(l), group = sl.filter(function (s) { return s.label === l; });
+      var rows = group.map(function (s) {
+        var curId = cur[s.key] || "", base = (el.length ? el : activeRoster()).slice();
+        var cp = curId && playerById(curId); if (cp && base.every(function (p) { return p.id !== curId; })) base.unshift(cp);
+        return '<div class="slot' + (curId ? "" : " empty-slot") + '"><span>' + esc(s.name) + '</span><select data-slot="' + esc(s.key) + '" aria-label="' + esc(s.name) + '"><option value="">Open</option>' +
+          base.map(function (p) { return '<option value="' + p.id + '"' + (p.id === curId ? " selected" : "") + '>' + (p.jersey ? "#" + esc(p.jersey) + " " : "") + esc(p.name) +
+            (p.out ? " (out)" : usedMap[p.id] && p.id !== curId ? " (placed)" : "") + '</option>'; }).join("") + '</select></div>';
+      }).join("");
+      return '<div class="gh"><b>' + esc(l) + '</b><small>' + (el.length ? el.length + " eligible" : "no one eligible, showing everyone") + '</small></div>' + rows;
+    }).join("");
+    var bench = activeRoster().filter(function (p) { return placed(pk, side).indexOf(p.id) < 0; });
+    h += '<div class="card"><h2>On the bench for ' + side.toLowerCase() + ', ' + esc(P[planP].name) + '</h2><div class="chips">' +
+      (bench.length ? bench.map(function (p) { return '<span class="chip">' + esc(tagName(p)) + '</span>'; }).join("") : '<span class="legend">Everyone active is placed.</span>') + '</div></div>';
+    return h;
+  }
+
+  function viewReview() {
+    var min = S.settings.minSnaps, P = periods(), act = activeRoster();
+    var h = "";
+    // Coverage
+    var covRows = [], short = 0, thin = 0;
+    SIDES.forEach(function (side) {
+      covRows.push('<div class="pos-label" style="margin-top:6px">' + side + '</div>');
+      S.positions[side].forEach(function (l) {
+        var need = spots(l), have = eligActive(l).length, cls = have < need ? "bad" : have === need ? "warn" : "ok";
+        if (cls === "bad") short++; if (cls === "warn") thin++;
+        covRows.push('<div class="cov"><span><b>' + esc(l) + '</b><small>' + have + ' eligible, needs ' + need + '</small></span><span class="st ' + cls + '">' +
+          (cls === "bad" ? "Short by " + (need - have) : cls === "warn" ? "No backup" : "+" + (have - need) + " backup") + '</span></div>');
+      });
+    });
+    h += '<div class="card"><h2>Position coverage</h2><p>' + (short ? short + " position" + (short > 1 ? "s" : "") + " can't be filled with active eligible players. " : "Every position can be filled. ") +
+      (thin ? thin + " " + (thin > 1 ? "have" : "has") + " no backup." : "Every position has a backup.") + '</p>' + covRows.join("") + '</div>';
+    // Development
+    var none = act.filter(function (p) { return !posOf(p.id).length; }), one = act.filter(function (p) { return posOf(p.id).length === 1; });
+    h += '<div class="card"><h2>Development</h2>';
+    if (!none.length && !one.length) h += '<p>Every active player is eligible at two or more positions.</p>';
+    if (none.length) h += '<div><p><b style="color:var(--fg)">Not assigned to any position.</b> They can\'t be placed in a lineup yet.</p><div class="chips" style="margin-top:6px">' +
+      none.map(function (p) { return '<span class="chip bad">' + esc(p.name) + '</span>'; }).join("") + '</div></div>';
+    if (one.length) h += '<div><p><b style="color:var(--fg)">Only one position.</b> A second spot adds depth and more ways to get on the field.</p><div class="chips" style="margin-top:6px">' +
+      one.map(function (p) { return '<span class="chip warn">' + esc(p.name) + ' · ' + esc(posOf(p.id)[0]) + '</span>'; }).join("") + '</div></div>';
+    h += '</div>';
+    // Playing time
+    h += '<div class="card"><h2>Playing time</h2>';
+    if (!hasLineups()) h += '<p>Fill in lineups on the Plan tab and each player\'s starts will show up here.</p>';
+    else {
+      var rows = act.slice().sort(function (a, b) { return periodsStarted(a.id) - periodsStarted(b.id) || snapsOf(a.id) - snapsOf(b.id); });
+      var all = rows.filter(function (p) { return periodsStarted(p.id) === P.length; }).length, zero = rows.filter(function (p) { return periodsStarted(p.id) === 0; }).length;
+      h += '<p>' + all + ' start every ' + (P.length === 2 ? "half" : "quarter") + ', ' + (rows.length - all - zero) + ' start some, ' + zero + ' ' + (zero === 1 ? "is" : "are") + ' on the bench the whole game and will need to be subbed in to reach ' + min + ' snaps.</p>';
+      h += '<div class="legend">O = offense, D = defense, – = not starting. Right side shows snaps logged so far.</div>';
+      h += rows.map(function (p) {
+        var c = snapsOf(p.id);
+        return '<div class="pt"><span class="who">' + (p.jersey ? '<span style="color:var(--gold)">' + esc(p.jersey) + '</span> ' : "") + esc(p.name) + '</span><span class="pcs">' +
+          P.map(function (pp) { var s = sidesIn(p.id, pp.k).map(function (x) { return x[0]; }).join(""); return '<span class="pc' + (s ? " on" : "") + '" title="' + pp.name + '">' + (s || "–") + '</span>'; }).join("") +
+          '</span><small style="color:' + (c < min ? "var(--bad)" : "var(--muted)") + '">' + c + ' / ' + min + '</small></div>';
+      }).join("");
+    }
+    return h + '</div>';
+  }
+
+  function posSettingsCard() {
+    var lab = function (side) { return S.positions[side].map(function (l) { return spots(l) > 1 ? l + " x" + spots(l) : l; }).join(", "); };
+    var h = '<div class="card"><h2>Positions and lineups</h2><label class="check" id="posOnWrap"><input type="checkbox" id="s-posOn"' + (posOn() ? " checked" : "") + '> Turn on positions and lineups</label>' +
+      '<p>Adds a Positions tab for who can play where, a Lineup tab for planning each half, and a review of coverage, development and playing time. Leave it off if you only need snap counts.</p>';
+    if (posOn()) h += '<label class="field">Offense positions, separated by commas<input class="inp" id="s-off" value="' + esc(lab("Offense")) + '"></label>' +
+      '<label class="field">Defense positions, separated by commas<input class="inp" id="s-def" value="' + esc(lab("Defense")) + '"></label>' +
+      '<p>Add a count after a position that has more than one spot, like "WR x2" or "OL x5". Use your own labels, such as the names in your playbook.</p>' +
+      '<div class="field">Lineup periods<div class="seg" role="group" aria-label="Lineup periods" style="align-self:flex-start">' +
+      '<button data-perset="2" aria-pressed="' + (S.settings.periods === 2) + '">Halves</button><button data-perset="4" aria-pressed="' + (S.settings.periods === 4) + '">Quarters</button></div></div>';
+    return h + '</div>';
+  }
+
+  function viewSettings() {
+    return demoBanner() + '<div class="card"><h2>League rules</h2>' +
+      '<label class="field">Minimum snaps per player<input class="inp" id="s-min" type="number" min="0" inputmode="numeric" value="' + S.settings.minSnaps + '"></label>' +
+      '<label class="field">Ball-carrier weight limit in pounds (leave blank for none)<input class="inp" id="s-wt" type="number" min="0" inputmode="numeric" value="' + (S.settings.weightLimit || "") + '"></label>' +
+      '<p>Players over the weight limit get a tag on the Snaps tab so you remember they can\'t carry the ball.</p></div>' +
+      posSettingsCard() +
+      '<div class="card"><h2>About</h2><p>Sideline helps you check three things: every position is covered, every player gets chances to develop, and everyone reaches the snap minimum. Nothing leaves your device. No account, no server.</p>' +
+      '<div class="row"><button class="btn" data-act="tour">Take the quick tour</button></div></div>';
+  }
+
+  /* ---------- first-time tour ---------- */
+  function tourSteps() {
+    var s = [
+      { tab: "snaps", title: "Welcome to Sideline", body: "Three questions, answered fast: is every position covered, is every player getting a chance to develop, and is everyone reaching the snap minimum? This takes about a minute. Everything you enter stays on this device." },
+      { tab: "snaps", hl: "#t-snaps", title: "Count snaps live", body: "Tap + for every player on the field after each play. IN/OUT marks who is available today. A red edge means a player is still under the minimum, and Undo covers a mis-tap." },
+      { tab: "roster", hl: "#t-roster", title: "Build your roster", body: "Add players one at a time, or paste a list straight from a spreadsheet. The players you see now are a made-up demo team. Clear them when you are ready to enter your own." },
+      { tab: "settings", hl: "#t-settings", title: "Match your league's rules", body: "Set the snap minimum and the ball-carrier weight limit to fit your league. Different league? Change the numbers or blank out the limit." }
+    ];
+    if (posOn()) {
+      s.push({ tab: "positions", hl: "#t-pos", title: "Who can play where", body: "Pick a position and choose which players are eligible for it. You see their snap counts right there, so it is easy to spot who needs time at that spot." });
+      s.push({ tab: "lineup", view: "plan", hl: "#t-lineup", title: "Plan each half", body: "Choose your starters for every position, on offense and defense. Auto-fill suggests a lineup that gives the most snaps to the players with the fewest starts so far." });
+      s.push({ tab: "lineup", view: "review", hl: "#t-lineup", title: "Check your plan", body: "Review shows which positions are short or have no backup, which players are stuck at one position, and who is not starting. That is where you catch problems before kickoff." });
+    } else {
+      s.push({ tab: "settings", hl: "#posOnWrap", title: "Positions and lineups are optional", body: "Turn this on to plan lineups and get a coverage, development and playing-time review. Leave it off if you only need snap counts." });
+    }
+    s.push({ tab: "snaps", title: "You're set", body: "Try tapping + on a few players. When you are ready, clear the demo on the Roster tab. You can replay this tour any time from Settings." });
+    return s;
+  }
+  function showTourStep() {
+    var steps = tourSteps(), st = steps[tourStep];
+    if (!st) return endTour();
+    tab = st.tab; if (st.view) planView = st.view;
+    render();
+  }
+  function endTour() { tourStep = null; planView = "plan"; S.tourDone = true; save(); render(); }
+  function renderTour() {
+    var el = $("#tour");
+    document.querySelectorAll(".hl").forEach(function (n) { n.classList.remove("hl"); });
+    if (tourStep == null) { el.hidden = true; document.body.classList.remove("touring"); return; }
+    var steps = tourSteps(), st = steps[tourStep]; if (!st) { el.hidden = true; return; }
+    document.body.classList.add("touring");
+    el.hidden = false;
+    el.innerHTML = '<div class="tour-card" role="dialog" aria-label="Quick tour"><div class="tour-top"><span>' + (tourStep + 1) + ' of ' + steps.length + '</span><button class="link" data-tour="skip">Skip tour</button></div>' +
+      '<h3>' + esc(st.title) + '</h3><p>' + esc(st.body) + '</p><div class="tour-actions">' +
+      (tourStep > 0 ? '<button class="btn" data-tour="back">Back</button>' : "") +
+      '<button class="btn primary" data-tour="next">' + (tourStep === steps.length - 1 ? "Start coaching" : "Next") + '</button></div></div>';
+    if (st.hl) { var h = $(st.hl); if (h && !h.hidden) h.classList.add("hl"); }
+  }
+
+  function render() {
+    var on = posOn();
+    $("#t-pos").hidden = !on; $("#t-lineup").hidden = !on;
+    if (!on && (tab === "positions" || tab === "lineup")) tab = "snaps";
+    document.querySelectorAll("nav button").forEach(function (b) { b.setAttribute("aria-selected", String(b.dataset.tab === tab)); });
+    var keep = document.activeElement && document.activeElement.id;
+    $("#main").innerHTML = tab === "snaps" ? viewSnaps() : tab === "roster" ? viewRoster() : tab === "positions" ? viewPositions() : tab === "lineup" ? viewLineup() : viewSettings();
+    if (keep && $("#" + keep) && /^(opp|s-min|s-wt)$/.test(keep)) { var el = $("#" + keep); el.focus(); try { el.setSelectionRange(el.value.length, el.value.length); } catch (e) {} }
+    renderTour();
+  }
+
+  function parseWeight(v) { var n = parseInt(String(v).replace(/\D/g, ""), 10); return n > 0 ? n : null; }
+  function cleanJersey(v) { return String(v || "").replace(/\D/g, "").slice(0, 2); }
+  function parseLabels(v) {
+    var seen = {}, out = [];
+    String(v).split(",").forEach(function (tok) {
+      tok = tok.trim(); if (!tok) return;
+      var m = tok.match(/^(.+?)\s*[x×]\s*(\d+)$/i), n = 1;
+      if (m) { tok = m[1].trim(); n = Math.min(6, Math.max(1, +m[2])); }
+      var l = tok.slice(0, 5).toUpperCase(); if (!l || seen[l]) return; seen[l] = 1; out.push({ l: l, n: n });
+    });
+    return out;
+  }
+
+  document.addEventListener("click", function (e) {
+    var t = e.target.closest("[data-tab],[data-act],[data-sort],[data-pos],[data-per],[data-side],[data-view],[data-perset],[data-tour]"); if (!t) return;
+    var d = t.dataset;
+    if (d.tour) {
+      if (d.tour === "skip") endTour();
+      else if (d.tour === "next") { tourStep++; if (tourStep >= tourSteps().length) endTour(); else showTourStep(); }
+      else if (d.tour === "back") { tourStep = Math.max(0, tourStep - 1); showTourStep(); }
+      return;
+    }
+    if (d.tab) { tab = d.tab; confirmNew = false; confirmDel = null; confirmClr = false; render(); window.scrollTo(0, 0); return; }
+    if (d.sort) { sortBy = d.sort; render(); return; }
+    if (d.pos) { posSel = d.pos; render(); return; }
+    if (d.per) { planP = +d.per; confirmClr = false; render(); return; }
+    if (d.side) { planSide = d.side; confirmClr = false; render(); return; }
+    if (d.view) { planView = d.view; render(); return; }
+    if (d.perset) { S.settings.periods = +d.perset === 4 ? 4 : 2; planP = 0; save(); render(); return; }
+    var id = d.id, a = d.act, pk = periods()[Math.min(planP, periods().length - 1)].k;
+    if (a === "inc" || a === "dec") {
+      undo.push(JSON.stringify(S.snaps)); if (undo.length > 30) undo.shift();
+      S.snaps[id] = Math.max(0, snapsOf(id) + (a === "inc" ? 1 : -1)); save(); render();
+    } else if (a === "undo") { if (undo.length) { S.snaps = JSON.parse(undo.pop()); save(); render(); } }
+    else if (a === "toggle") { var p = playerById(id); if (p) { p.out = !p.out; save(); render(); } }
+    else if (a === "new-game") { confirmNew = true; render(); }
+    else if (a === "new-game-no") { confirmNew = false; render(); }
+    else if (a === "new-game-yes") { S.snaps = {}; S.roster.forEach(function (p) { p.out = false; }); S.opponent = ""; S.date = ""; undo = []; confirmNew = false; save(); render(); toast("New game started"); }
+    else if (a === "clear-demo") { var keepPos = posOn(); S = blankState(); S.settings.positionsOn = keepPos; undo = []; save(); tab = "roster"; render(); toast("Demo cleared"); }
+    else if (a === "pos-rm") { S.elig[posSel] = (S.elig[posSel] || []).filter(function (x) { return x !== id; }); save(); render(); }
+    else if (a === "del") { confirmDel = id; render(); }
+    else if (a === "del-yes") { S.roster = S.roster.filter(function (x) { return x.id !== id; }); delete S.snaps[id];
+      Object.keys(S.elig).forEach(function (k) { S.elig[k] = S.elig[k].filter(function (x) { return x !== id; }); }); confirmDel = null; save(); render(); }
+    else if (a === "autofill") { var before = placed(pk, planSide).length; autoFill(pk, planSide); save(); render(); var gained = placed(pk, planSide).length - before; toast(gained ? "Filled " + gained + " spot" + (gained > 1 ? "s" : "") : "Nothing more to fill. Check eligible players on the Positions tab"); }
+    else if (a === "copyprev") { var prev = periods()[planP - 1].k, src = lu(prev, planSide), dst = lu(pk, planSide);
+      slotsFor(planSide).forEach(function (s) { var p = src[s.key] && playerById(src[s.key]); if (p && !p.out) dst[s.key] = p.id; else delete dst[s.key]; }); save(); render(); toast("Copied from " + periods()[planP - 1].name); }
+    else if (a === "clr") { confirmClr = true; render(); }
+    else if (a === "clr-no") { confirmClr = false; render(); }
+    else if (a === "clr-yes") { S.lineups[pk] = S.lineups[pk] || {}; S.lineups[pk][planSide] = {}; confirmClr = false; save(); render(); }
+    else if (a === "tour") { tourStep = 0; showTourStep(); window.scrollTo(0, 0); }
+    else if (a === "paste-add") {
+      var lines = ($("#paste").value || "").split(/\r?\n/).map(function (l) { return l.trim(); }).filter(Boolean), added = [];
+      lines.forEach(function (l) { var f = l.split(/[,\t]/).map(function (s) { return s.trim(); }); if (!f[0] || /^name$/i.test(f[0])) return;
+        added.push({ id: uid(), name: f[0], jersey: cleanJersey(f[1]), weight: parseWeight(f[2] || ""), out: false }); });
+      if (!added.length) { toast("Nothing to add yet"); return; }
+      clearDemoIfNeeded(); S.roster = S.roster.concat(added); save(); render(); toast(added.length + " players added");
+    } else if (a === "backup") {
+      backupText = JSON.stringify({ app: "sideline", v: 2, roster: S.roster, settings: S.settings, positions: S.positions, counts: S.counts, elig: S.elig, lineups: S.lineups }); render();
+      var done = function () { toast("Backup copied"); }, fail = function () { toast("Select the text below and copy it"); var o = $("#backup-out"); if (o) { o.focus(); o.select(); } };
+      try { navigator.clipboard.writeText(backupText).then(done, fail); } catch (err) { fail(); }
+    } else if (a === "restore") {
+      try { var dd = JSON.parse(($("#restore").value || "").trim());
+        if (!dd || dd.app !== "sideline" || !Array.isArray(dd.roster)) throw 0;
+        var ds = dd.settings || {};
+        S = { demo: false, tourDone: true, roster: dd.roster.map(function (p) { return { id: p.id || uid(), name: String(p.name || "Player"), jersey: cleanJersey(p.jersey), weight: parseWeight(p.weight || ""), out: !!p.out }; }),
+          snaps: {}, settings: { minSnaps: +ds.minSnaps || 12, weightLimit: +ds.weightLimit || 0, positionsOn: !!ds.positionsOn, periods: ds.periods === 4 ? 4 : 2 },
+          positions: (dd.positions && Array.isArray(dd.positions.Offense) && Array.isArray(dd.positions.Defense)) ? dd.positions : defaultPositions(),
+          counts: dd.counts || defaultCounts(), elig: dd.elig || {}, lineups: dd.lineups || {}, opponent: "", date: "" };
+        undo = []; save(); render(); toast("Roster restored");
+      } catch (err) { toast("That doesn't look like a Sideline backup"); }
+    }
+  });
+
+  document.addEventListener("submit", function (e) {
+    if (e.target.id !== "addform") return; e.preventDefault();
+    var name = $("#a-name").value.trim(); if (!name) return;
+    clearDemoIfNeeded();
+    S.roster.push({ id: uid(), name: name, jersey: cleanJersey($("#a-j").value), weight: parseWeight($("#a-w").value), out: false });
+    save(); render(); $("#a-name").focus(); toast(name + " added");
+  });
+
+  document.addEventListener("change", function (e) {
+    var t = e.target;
+    if (t.id === "posfilter") { posFilter = t.value; render(); return; }
+    if (t.id === "posadd") { if (t.value) { S.elig[posSel] = (S.elig[posSel] || []).concat(t.value); save(); } render(); return; }
+    if (t.dataset.slot !== undefined) { var pk = periods()[planP].k, cur = lu(pk, planSide); if (t.value) cur[t.dataset.slot] = t.value; else delete cur[t.dataset.slot]; save(); render(); return; }
+    if (t.id === "s-posOn") { S.settings.positionsOn = t.checked; save(); render(); return; }
+    if (t.id === "s-off" || t.id === "s-def") {
+      var side = t.id === "s-off" ? "Offense" : "Defense", other = side === "Offense" ? "Defense" : "Offense";
+      var parsed = parseLabels(t.value).filter(function (x) { return S.positions[other].indexOf(x.l) < 0; });
+      if (parsed.length) { S.positions[side] = parsed.map(function (x) { return x.l; }); parsed.forEach(function (x) { S.counts[x.l] = x.n; }); save(); }
+      render(); return; }
+    if (t.dataset.edit) { var p = playerById(t.dataset.id); if (!p) return;
+      if (t.dataset.edit === "name") p.name = t.value.trim() || p.name;
+      if (t.dataset.edit === "jersey") p.jersey = cleanJersey(t.value);
+      if (t.dataset.edit === "weight") p.weight = parseWeight(t.value);
+      save(); render(); }
+  });
+
+  document.addEventListener("input", function (e) {
+    var t = e.target;
+    if (t.id === "opp") { S.opponent = t.value; save(); }
+    else if (t.id === "gdate") { S.date = t.value; save(); }
+    else if (t.id === "s-min") { S.settings.minSnaps = Math.max(0, parseInt(t.value, 10) || 0); save(); }
+    else if (t.id === "s-wt") { S.settings.weightLimit = Math.max(0, parseInt(t.value, 10) || 0); save(); }
+  });
+
+  render();
+  if (!S.tourDone) { tourStep = 0; showTourStep(); }
+})();
+</script>
+</body>
+</html>
